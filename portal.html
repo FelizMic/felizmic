@@ -729,13 +729,31 @@ async function elegir(m) {
   if (!r) return ver('v-app');
   ops = r.opciones;
   if (!ops.length) { $('el-lista').innerHTML = '<p class="lead muted" style="margin:0">Por ahora no hay lugares disponibles. Probá en unos días.</p>'; return; }
-  b.hidden = false;
-  $('el-lista').innerHTML = unicos(ops.map(o => o.fecha)).map(fe => '<div class="col" style="gap:8px"><p class="gt">' + esc(fechaLarga(fe)) + '</p>' +
-    ops.map((o, i) => o.fecha !== fe ? '' : '<label class="opt"><input type="radio" name="op" value="' + i + '" required><span class="t">' +
-      '<span style="font-size:16px;font-weight:600">' + esc(o.horario) + ' h · ' + esc(lugar(o)) + '</span>' +
-      '<span class="muted" style="font-size:14px">con ' + esc(o.guia) + '</span></span>' +
-      tag('tag-accent-2', o.libres === 1 ? 'Queda 1 lugar' : 'Quedan ' + o.libres + ' lugares') + '</label>').join('') + '</div>').join('');
+  elSel = { taller: '', dia: '' };
+  $('el-lista').innerHTML = '<div class="col" style="gap:10px"><p class="gt">1 · Elegí la sede</p><div class="chips">' + unicos(ops.map(o => o.taller)).sort().map(t => chip('el-taller', t)).join('') + '</div></div>' +
+    '<div id="el-p-dia" class="col" style="gap:10px" hidden><p class="gt">2 · Elegí el día</p><div id="el-dia" class="chips"></div></div>' +
+    '<div id="el-p-hora" class="col" style="gap:14px" hidden><p class="gt">3 · Elegí el horario</p><div id="el-hora" class="col" style="gap:18px"></div></div>';
 }
+let elSel = { taller: '', dia: '' };
+$('f-elegir').addEventListener('change', e => {
+  const b = $('f-elegir').querySelector('[type=submit]');
+  if (e.target.name === 'el-taller') {
+    elSel = { taller: e.target.value, dia: '' };
+    const dias = unicos(ops.filter(o => o.taller === elSel.taller).map(o => o.dia)).sort((x, y) => ORDEN.indexOf(norm(x)) - ORDEN.indexOf(norm(y)));
+    $('el-dia').innerHTML = dias.map(d => chip('el-dia', d, nombreDia(d))).join('');
+    $('el-p-dia').hidden = false; $('el-p-hora').hidden = true; b.hidden = true;
+  }
+  if (e.target.name === 'el-dia') {
+    elSel.dia = e.target.value;
+    const sel = ops.map((o, i) => [o, i]).filter(p => p[0].taller === elSel.taller && p[0].dia === elSel.dia);
+    $('el-hora').innerHTML = unicos(sel.map(p => p[0].fecha)).map(fe => '<div class="col" style="gap:8px"><p class="gt" style="font-weight:400">' + esc(fechaLarga(fe)) + '</p>' +
+      sel.filter(p => p[0].fecha === fe).map(p => { const o = p[0]; return '<label class="opt"><input type="radio" name="op" value="' + p[1] + '" required><span class="t">' +
+        '<span style="font-size:16px;font-weight:600">' + esc(o.horario) + ' h' + (o.aula ? ' · ' + esc(o.aula) : '') + '</span>' +
+        '<span class="muted" style="font-size:14px">con ' + esc(o.guia) + '</span></span>' +
+        tag('tag-accent-2', o.libres === 1 ? 'Queda 1 lugar' : 'Quedan ' + o.libres + ' lugares') + '</label>'; }).join('') + '</div>').join('');
+    $('el-p-hora').hidden = false; b.hidden = false;
+  }
+});
 $('el-volver').addEventListener('click', () => ver('v-app'));
 $('f-elegir').addEventListener('submit', async e => {
   e.preventDefault();
